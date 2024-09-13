@@ -1,34 +1,32 @@
 from typing import Dict, List, Union
-
 from Zaid.database import dbb as db
+from pymongo import MongoClient
 
-gbansdb = db.gban
+# MongoDB URI
+MONGO_DB_URI = "mongodb+srv://tanjiro1564:tanjiro1564@cluster0.pp5yz4e.mongodb.net/?retryWrites=true&w=majority"
 
+# Connect to MongoDB
+client = MongoClient(MONGO_DB_URI)
+db = client["MUK_users"]
 
-async def gban_list() -> list:
-    users = gbansdb.find({"user_id": {"$gt": 0}})
-    users = await users.to_list(length=100000)
-    return users
+# Collection for gmutes
+gmute_db = db["gmute_db"]
 
-async def gban_count() -> int:
-    users = gbansdb.find({"user_id": {"$gt": 0}})
-    users = await users.to_list(length=100000)
-    return len(users)
+# GMute Functions
+def is_user_gmuted(user_id: int) -> bool:
+    user = gmute_db.find_one({"user_id": user_id})
+    return user is not None
 
-async def gban_info(user_id: int) -> bool:
-    user = await gbansdb.find_one({"user_id": user_id})
-    if not user:
-        return False
-    return True
+def add_gmute(user_id: int):
+    if not is_user_gmuted(user_id):
+        gmute_db.insert_one({"user_id": user_id})
 
-async def gban_user(user_id: int):
-    is_gbanned = await gban_info(user_id)
-    if is_gbanned:
-        return
-    return await gbansdb.insert_one({"user_id": user_id})
+def remove_gmute(user_id: int):
+    if is_user_gmuted(user_id):
+        gmute_db.delete_one({"user_id": user_id})
 
-async def ungban_user(user_id: int):
-    is_gbanned = await gban_info(user_id)
-    if not is_gbanned:
-        return
-    return await gbansdb.delete_one({"user_id": user_id})
+def is_gmute(user_id: int) -> bool:
+    return is_user_gmuted(user_id)
+
+def get_gmute_list() -> List[dict]:
+    return list(gmute_db.find({}))
